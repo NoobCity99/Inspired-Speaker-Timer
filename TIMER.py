@@ -37,6 +37,7 @@ DEFAULT_WINDOW = {
     "control_geometry": "540x760+80+80",
     "display_geometry": "980x360+650+120",
     "borderless_display": False,
+    "display_always_on_top": True,
 }
 
 ICON_CONFIG = {
@@ -88,6 +89,9 @@ class SpeakerTimerApp:
         self.borderless_var = tk.BooleanVar(
             value=self.window_settings["borderless_display"]
         )
+        self.always_on_top_var = tk.BooleanVar(
+            value=self.window_settings["display_always_on_top"]
+        )
 
         self.frame_widgets = []
         self.panel_frame_widgets = []
@@ -104,7 +108,7 @@ class SpeakerTimerApp:
         self.bind_shortcuts()
         self.apply_theme()
         self.refresh_clock_faces()
-        self.root.after_idle(self.apply_borderless_mode)
+        self.root.after_idle(self.apply_display_window_flags)
         self.root.after_idle(self.fit_control_window_to_content)
         self.root.after_idle(self.update_display_font)
         self.update_timer_loop()
@@ -176,6 +180,11 @@ class SpeakerTimerApp:
             label="Borderless Display",
             variable=self.borderless_var,
             command=self.apply_borderless_mode,
+        )
+        settings_menu.add_checkbutton(
+            label="Display Always on Top",
+            variable=self.always_on_top_var,
+            command=self.apply_display_window_flags,
         )
         settings_menu.add_command(
             label="Restore Default Appearance", command=self.restore_default_appearance
@@ -672,6 +681,7 @@ class SpeakerTimerApp:
         self.palette = DEFAULT_PALETTE.copy()
         self.font_settings = DEFAULT_FONTS.copy()
         self.borderless_var.set(DEFAULT_WINDOW["borderless_display"])
+        self.always_on_top_var.set(DEFAULT_WINDOW["display_always_on_top"])
 
         if self.settings_window and self.settings_window.winfo_exists():
             for palette_key, control_set in self.settings_controls.items():
@@ -683,7 +693,7 @@ class SpeakerTimerApp:
 
         self.apply_theme()
         self.refresh_clock_faces()
-        self.apply_borderless_mode()
+        self.apply_display_window_flags()
 
     def apply_theme(self) -> None:
         control_font = (
@@ -1049,12 +1059,10 @@ class SpeakerTimerApp:
 
     def show_display_window(self) -> None:
         self.display.deiconify()
+        self.display.attributes("-topmost", self.always_on_top_var.get())
         self.display.lift()
 
-    def hide_display_window(self) -> None:
-        self.display.withdraw()
-
-    def apply_borderless_mode(self) -> None:
+    def apply_display_window_flags(self) -> None:
         if not self.display.winfo_exists():
             return
 
@@ -1071,6 +1079,7 @@ class SpeakerTimerApp:
         try:
             self.display.withdraw()
             self.display.overrideredirect(self.borderless_var.get())
+            self.display.attributes("-topmost", self.always_on_top_var.get())
             if current_geometry:
                 self.display.geometry(current_geometry)
             if not was_hidden:
@@ -1078,6 +1087,12 @@ class SpeakerTimerApp:
                 self.display.lift()
         except tk.TclError:
             pass
+
+    def hide_display_window(self) -> None:
+        self.display.withdraw()
+
+    def apply_borderless_mode(self) -> None:
+        self.apply_display_window_flags()
 
     def disable_borderless(self) -> None:
         if not self.borderless_var.get():
